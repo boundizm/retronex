@@ -76,6 +76,14 @@ CREATE TABLE IF NOT EXISTS appeals (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS tickets (
+  channel_id TEXT PRIMARY KEY,
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS voice_channels (
   channel_id TEXT PRIMARY KEY,
   guild_id TEXT NOT NULL,
@@ -213,7 +221,17 @@ const allVoiceChannels = () => db.prepare('SELECT * FROM voice_channels').all();
 const getOwnedVoiceChannel = (guildId, ownerId) =>
   db.prepare('SELECT * FROM voice_channels WHERE guild_id = ? AND owner_id = ?').get(guildId, ownerId);
 
+// ---------- Biletler ----------
+const addTicket = (channelId, guildId, userId, category) =>
+  db.prepare('INSERT INTO tickets (channel_id, guild_id, user_id, category, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(channelId, guildId, userId, category, now());
+const getTicket = (channelId) => db.prepare('SELECT * FROM tickets WHERE channel_id = ?').get(channelId);
+const getUserTickets = (guildId, userId) =>
+  db.prepare('SELECT * FROM tickets WHERE guild_id = ? AND user_id = ?').all(guildId, userId);
+const removeTicket = (channelId) => db.prepare('DELETE FROM tickets WHERE channel_id = ?').run(channelId);
+
 module.exports = {
+  addTicket, getTicket, getUserTickets, removeTicket,
   db, getSettings, setSetting,
   xpForLevel, levelFromXp, addXp, getLevel, getRank, getLeaderboard, countLevelUsers, resetLevel,
   getLevelRoles, setLevelRole, removeLevelRole,

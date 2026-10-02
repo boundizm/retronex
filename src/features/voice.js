@@ -25,7 +25,7 @@ async function createPrivateChannel(member, hub) {
   }
 
   const channel = await guild.channels.create({
-    name: `🔊 ${member.displayName}`.slice(0, config.voice.maxNameLength),
+    name: `[💎] ${member.user.username}`.slice(0, config.voice.maxNameLength),
     type: ChannelType.GuildVoice,
     parent: parent?.id,
     bitrate: Math.min(hub.bitrate, guild.maximumBitrate),
@@ -50,10 +50,10 @@ async function onVoiceStateUpdate(oldState, newState) {
   const guild = newState.guild;
   const member = newState.member;
   if (!member || member.user.bot) return;
-  const { voice_hub: hubId } = db.getSettings(guild.id);
+  const hubId = config.voice.hubChannelId;
 
   // Hub'a giren kullanıcıya oda aç
-  if (hubId && newState.channelId === hubId && oldState.channelId !== hubId) {
+  if (newState.channelId === hubId && oldState.channelId !== hubId) {
     const last = createCooldown.get(member.id) ?? 0;
     if (Date.now() - last < config.voice.createCooldownMs) {
       await member.voice.disconnect('Çok hızlı oda oluşturma').catch(() => {});
@@ -212,7 +212,7 @@ function panelMessage() {
     new ButtonBuilder().setCustomId(`ses:${id}`).setLabel(label).setEmoji(emoji).setStyle(style);
   return {
     embeds: [new EmbedBuilder().setColor(config.colors.main).setTitle('🎙️ Özel Ses Kanalı Paneli')
-      .setDescription('Hub kanalına girince sana özel bir ses kanalı açılır. Aşağıdaki butonlarla **bulunduğun** kanalı yönetebilirsin.\nKullanıcı bazlı işlemler için `/ses izin`, `/ses yasakla`, `/ses at`, `/ses devret` komutlarını kullan.')],
+      .setDescription('Hub kanalına (➕) girince sana özel bir ses kanalı açılır. Aşağıdaki butonlarla **bulunduğun** kanalı yönetebilirsin.\nKullanıcı bazlı işlemler için `/ses izin`, `/ses yasakla`, `/ses at`, `/ses devret` komutlarını kullan.')],
     components: [
       new ActionRowBuilder().addComponents(btn('kilitle', 'Kilitle', '🔒'), btn('ac', 'Kilidi Aç', '🔓'), btn('gizle', 'Gizle', '🙈'), btn('goster', 'Göster', '👁️')),
       new ActionRowBuilder().addComponents(btn('isim', 'İsim', '✏️', ButtonStyle.Primary), btn('limit', 'Limit', '👥', ButtonStyle.Primary), btn('devral', 'Devral', '👑', ButtonStyle.Success), btn('bilgi', 'Bilgi', 'ℹ️'), btn('sil', 'Sil', '🗑️', ButtonStyle.Danger)),

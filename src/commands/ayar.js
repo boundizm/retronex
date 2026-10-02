@@ -74,7 +74,8 @@ module.exports = {
       { name: 'Yetkili rolü', value: s.staff_role ? `<@&${s.staff_role}>` : '`yok`', inline: true },
       { name: 'Seviye sistemi', value: s.level_enabled ? 'açık' : 'kapalı', inline: true },
       { name: 'Ceza eşiği', value: s.warn_threshold ? `${s.warn_threshold} uyarı → ${s.warn_timeout_min} dk susturma` : 'kapalı', inline: true },
-      { name: 'Özel ses hub', value: ch(s.voice_hub), inline: true },
+      { name: 'Özel ses hub', value: ch(config.voice.hubChannelId), inline: true },
+      { name: 'Bilet kategorisi', value: `\`${config.tickets.categoryId}\``, inline: true },
     );
     return i.reply({ embeds: [e], flags: ephemeral, allowedMentions: { parse: [] } });
   },

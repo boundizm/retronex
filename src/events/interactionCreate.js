@@ -2,6 +2,7 @@ const { Events, MessageFlags } = require('discord.js');
 const { submitReport, handleButton: reportButton } = require('../features/reports');
 const { submitAppeal, handleButton: appealButton } = require('../features/appeals');
 const voice = require('../features/voice');
+const tickets = require('../features/tickets');
 const { fail } = require('../utils/helpers');
 
 async function route(i) {
@@ -12,7 +13,10 @@ async function route(i) {
 
   const [scope, kind, ...rest] = (i.customId ?? '').split(':');
 
+  if (i.isStringSelectMenu() && scope === 'ticket') return tickets.handleSelect(i);
+
   if (i.isButton()) {
+    if (scope === 'ticket') return tickets.handleButton(i);
     if (scope === 'rapor') return reportButton(i);
     if (scope === 'itiraz') return appealButton(i);
     if (scope === 'ses') return voice.handleComponent(i);

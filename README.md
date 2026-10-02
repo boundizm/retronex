@@ -11,7 +11,8 @@ Türk Habbo Retro topluluğu için Discord botu (discord.js v14, Node 22.13+, SQ
 | **Rapor** | `/rapor kullanici sebep [kanit]` ve mesaja sağ tık → *Uygulamalar → Mesajı Raporla*. Rapor kanalına butonlu (İşlem yapıldı / Geçersiz) düşer, sonuç raporlayana DM'lenir |
 | **İtiraz** | `/itiraz ceza-no` → form → itiraz kanalına düşer. Yetkili **Kabul** ederse ceza otomatik geri alınır (unban / susturma kaldırma / uyarı geçersiz), sonuç DM'lenir. Banlı kullanıcılar için bota DM'den de çalışır |
 | **Otomatik moderasyon** | `/otomod kur` Discord'un **yerleşik AutoMod** kurallarını oluşturur (küfür/hakaret/cinsel içerik preset'i, spam, toplu etiket + 5 dk timeout, davet linki). `/otomod kelime-ekle\|kelime-sil\|kelime-liste` özel yasaklı kelimeler, `/otomod durum` kuralları + sunucu doğrulama seviyesini gösterir. AutoMod'un engellediği her mesaj otomatik uyarı olarak kaydedilir ve eşik sistemine işler |
-| **Özel ses kanalı** | `/ses kur` "➕ Oda Oluştur" hub'ı açar; girene özel oda açılır, boşalınca silinir, sahip çıkarsa sahiplik otomatik devredilir. `/ses panel` buton paneli; `/ses kilitle\|ac\|gizle\|goster\|isim\|limit\|izin\|yasakla\|at\|devret\|devral\|bilgi\|sil` |
+| **Destek biletleri** | Bot açılışta `TICKET_PANEL_CHANNEL_ID` kanalına embed + kategori menüsü gönderir (varsa günceller). Seçime göre `TICKET_CATEGORY_ID` kategorisinde özel kanal açılır (kullanıcı + `/ayar yetkili-rol` rolü görür); kullanıcı başına tek açık bilet, 🔒 butonla kapanır |
+| **Özel ses kanalı** | Hub kanalına (ID `config.js` / `.env`: `VOICE_HUB_CHANNEL_ID`) girene `[💎] kullaniciadi` adlı özel oda açılır, boşalınca silinir, sahip çıkarsa sahiplik otomatik devredilir. `/ses panel` buton paneli; `/ses kilitle\|ac\|gizle\|goster\|isim\|limit\|izin\|yasakla\|at\|devret\|devral\|bilgi\|sil` |
 
 ## Kurulum
 
@@ -33,7 +34,7 @@ Türk Habbo Retro topluluğu için Discord botu (discord.js v14, Node 22.13+, SQ
    /ayar itiraz-kanali #itirazlar
    /ayar yetkili-rol @Moderatör     (opsiyonel; AutoMod muafiyeti ve etiketleme)
    /otomod kur
-   /ses kur   →   /ses panel
+   /ses panel                       (ses yönetim butonları)
    /seviye-ayar rol-ekle seviye:5 rol:@Aktif
    ```
 

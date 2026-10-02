@@ -19,5 +19,15 @@ module.exports = {
   // Varsayılan ceza eşiği: 3 aktif uyarıda 60 dk susturma
   defaults: { warnThreshold: 3, warnTimeoutMin: 60 },
 
-  voice: { createCooldownMs: 5_000, maxNameLength: 100 },
+  voice: {
+    hubChannelId: process.env.VOICE_HUB_CHANNEL_ID || '1555149263925813258',
+    createCooldownMs: 5_000,
+    maxNameLength: 100,
+  },
+
+  tickets: {
+    panelChannelId: process.env.TICKET_PANEL_CHANNEL_ID || '1555279909553709066',
+    categoryId: process.env.TICKET_CATEGORY_ID || '1555279862326104124',
+    color: 0x1db924,
+  },
 };

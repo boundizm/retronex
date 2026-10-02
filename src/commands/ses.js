@@ -1,7 +1,6 @@
-const { SlashCommandBuilder, InteractionContextType, ChannelType, PermissionFlagsBits } = require('discord.js');
-const db = require('../database');
+const { SlashCommandBuilder, InteractionContextType, PermissionFlagsBits } = require('discord.js');
 const voice = require('../features/voice');
-const { ok, fail } = require('../utils/helpers');
+const { fail } = require('../utils/helpers');
 
 const userOpt = (o) => o.setName('kullanici').setDescription('Kullanıcı').setRequired(true);
 
@@ -10,7 +9,6 @@ module.exports = {
     .setName('ses')
     .setDescription('Özel ses kanalını yönet')
     .setContexts(InteractionContextType.Guild)
-    .addSubcommand((s) => s.setName('kur').setDescription('[Yönetici] "Oda Oluştur" hub kanalını kurar'))
     .addSubcommand((s) => s.setName('panel').setDescription('[Yönetici] Kontrol panelini bu kanala gönderir'))
     .addSubcommand((s) => s.setName('kilitle').setDescription('Kanalı kilitler'))
     .addSubcommand((s) => s.setName('ac').setDescription('Kanal kilidini açar'))
@@ -31,19 +29,9 @@ module.exports = {
   async execute(i) {
     const sub = i.options.getSubcommand();
 
-    if (sub === 'kur' || sub === 'panel') {
+    if (sub === 'panel') {
       if (!i.memberPermissions.has(PermissionFlagsBits.ManageChannels)) return i.reply(fail('Bunun için **Kanalları Yönet** yetkisi gerekir.'));
-      if (sub === 'panel') return i.reply(voice.panelMessage());
-
-      const me = i.guild.members.me;
-      if (!me.permissions.has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers])) {
-        return i.reply(fail('Bana **Kanalları Yönet** ve **Üyeleri Taşı** yetkilerini ver.'));
-      }
-      await i.deferReply({ flags: 64 });
-      const category = await i.guild.channels.create({ name: '🎙️ Özel Odalar', type: ChannelType.GuildCategory });
-      const hub = await i.guild.channels.create({ name: '➕ Oda Oluştur', type: ChannelType.GuildVoice, parent: category.id });
-      db.setSetting(i.guildId, 'voice_hub', hub.id);
-      return i.editReply(ok(`Hub kanalı ${hub} oluşturuldu. Üyeler girince kendi özel odaları açılır. Kontrol paneli için bir metin kanalında \`/ses panel\` kullan.`));
+      return i.reply(voice.panelMessage());
     }
 
     const user = i.options.getUser('kullanici');
