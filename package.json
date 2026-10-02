@@ -1,0 +1,17 @@
+{
+  "name": "retronex-bot",
+  "version": "1.0.0",
+  "description": "Türk Habbo Retro topluluğu için Discord botu: seviye, moderasyon, itiraz/rapor, otomatik moderasyon ve özel ses kanalları",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "check": "node scripts/check.js"
+  },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.4.5"
+  },
+  "license": "MIT"
+}

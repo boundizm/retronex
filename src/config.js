@@ -1,0 +1,23 @@
+require('dotenv').config();
+
+module.exports = {
+  token: process.env.DISCORD_TOKEN,
+  clientId: process.env.CLIENT_ID,
+  guildId: process.env.GUILD_ID || null,
+
+  colors: {
+    main: 0x5865f2,
+    success: 0x57f287,
+    warn: 0xfee75c,
+    danger: 0xed4245,
+    info: 0x3498db,
+  },
+
+  // Seviye sistemi
+  xp: { min: 15, max: 25, cooldownMs: 60_000 },
+
+  // Varsayılan ceza eşiği: 3 aktif uyarıda 60 dk susturma
+  defaults: { warnThreshold: 3, warnTimeoutMin: 60 },
+
+  voice: { createCooldownMs: 5_000, maxNameLength: 100 },
+};
