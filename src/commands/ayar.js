@@ -3,6 +3,7 @@ const {
 } = require('discord.js');
 const config = require('../config');
 const db = require('../database');
+const { t } = require('../texts');
 const { ok, fail, ephemeral } = require('../utils/helpers');
 
 const textChannel = (o, name, desc) =>
@@ -33,25 +34,25 @@ module.exports = {
     const sub = i.options.getSubcommand();
     const set = (key, value) => db.setSetting(i.guildId, key, value);
 
-    const channelMap = { 'mod-log': ['modlog_channel', 'Mod-log'], 'rapor-kanali': ['report_channel', 'Rapor'], 'itiraz-kanali': ['appeal_channel', 'İtiraz'] };
+    const channelMap = { 'mod-log': ['modlog_channel', 'modlog'], 'rapor-kanali': ['report_channel', 'report'], 'itiraz-kanali': ['appeal_channel', 'appeal'] };
     if (channelMap[sub]) {
       const ch = i.options.getChannel('kanal', true);
       const me = ch.permissionsFor(i.guild.members.me);
-      if (!me?.has(['ViewChannel', 'SendMessages', 'EmbedLinks'])) return i.reply(fail(`${ch} kanalında mesaj/embed gönderme iznim yok.`));
+      if (!me?.has(['ViewChannel', 'SendMessages', 'EmbedLinks'])) return i.reply(fail(t('settings.channel_perm', { channel: `${ch}` })));
       set(channelMap[sub][0], ch.id);
-      return i.reply(ok(`${channelMap[sub][1]} kanalı ${ch} olarak ayarlandı.`));
+      return i.reply(ok(t('settings.channel_set', { label: t(`settings.label.${channelMap[sub][1]}`), channel: `${ch}` })));
     }
 
     if (sub === 'seviye-kanali') {
       const ch = i.options.getChannel('kanal');
       set('level_channel', ch?.id ?? null);
-      return i.reply(ok(ch ? `Seviye duyuruları ${ch} kanalına gidecek.` : 'Seviye duyuruları mesajın yazıldığı kanalda yapılacak.'));
+      return i.reply(ok(ch ? t('settings.level_channel_set', { channel: `${ch}` }) : t('settings.level_channel_unset')));
     }
 
     if (sub === 'yetkili-rol') {
       const role = i.options.getRole('rol');
       set('staff_role', role?.id ?? null);
-      return i.reply(ok(role ? `Yetkili rolü ${role} olarak ayarlandı.` : 'Yetkili rolü kaldırıldı.'));
+      return i.reply(ok(role ? t('settings.staff_set', { role: `${role}` }) : t('settings.staff_unset')));
     }
 
     if (sub === 'ceza-esigi') {
@@ -60,22 +61,22 @@ module.exports = {
       set('warn_threshold', n);
       if (min) set('warn_timeout_min', min);
       const cur = db.getSettings(i.guildId);
-      return i.reply(ok(n ? `**${n}** aktif uyarıda **${cur.warn_timeout_min} dk** otomatik susturma uygulanacak.` : 'Otomatik uyarı cezası kapatıldı.'));
+      return i.reply(ok(n ? t('settings.threshold_on', { count: n, minutes: cur.warn_timeout_min }) : t('settings.threshold_off')));
     }
 
     // goster
     const s = db.getSettings(i.guildId);
-    const ch = (id) => (id ? `<#${id}>` : '`ayarlanmamış`');
-    const e = new EmbedBuilder().setColor(config.colors.main).setTitle('⚙️ Retronex Ayarları').addFields(
-      { name: 'Mod-log', value: ch(s.modlog_channel), inline: true },
-      { name: 'Rapor', value: ch(s.report_channel), inline: true },
-      { name: 'İtiraz', value: ch(s.appeal_channel), inline: true },
-      { name: 'Seviye duyuru', value: s.level_channel ? ch(s.level_channel) : '`mesaj kanalı`', inline: true },
-      { name: 'Yetkili rolü', value: s.staff_role ? `<@&${s.staff_role}>` : '`yok`', inline: true },
-      { name: 'Seviye sistemi', value: s.level_enabled ? 'açık' : 'kapalı', inline: true },
-      { name: 'Ceza eşiği', value: s.warn_threshold ? `${s.warn_threshold} uyarı → ${s.warn_timeout_min} dk susturma` : 'kapalı', inline: true },
-      { name: 'Özel ses hub', value: ch(config.voice.hubChannelId), inline: true },
-      { name: 'Bilet kategorisi', value: `\`${config.tickets.categoryId}\``, inline: true },
+    const ch = (id) => (id ? `<#${id}>` : `\`${t('settings.unset')}\``);
+    const e = new EmbedBuilder().setColor(config.colors.main).setTitle(t('settings.show.title')).addFields(
+      { name: t('settings.show.f_modlog'), value: ch(s.modlog_channel), inline: true },
+      { name: t('settings.show.f_report'), value: ch(s.report_channel), inline: true },
+      { name: t('settings.show.f_appeal'), value: ch(s.appeal_channel), inline: true },
+      { name: t('settings.show.f_level'), value: s.level_channel ? ch(s.level_channel) : `\`${t('settings.msgchannel')}\``, inline: true },
+      { name: t('settings.show.f_staff'), value: s.staff_role ? `<@&${s.staff_role}>` : `\`${t('settings.none')}\``, inline: true },
+      { name: t('settings.show.f_levelsys'), value: s.level_enabled ? t('settings.on') : t('settings.off'), inline: true },
+      { name: t('settings.show.f_threshold'), value: s.warn_threshold ? t('automod.status.threshold', { count: s.warn_threshold, minutes: s.warn_timeout_min }) : t('settings.off'), inline: true },
+      { name: t('settings.show.f_voice'), value: ch(config.voice.hubChannelId), inline: true },
+      { name: t('settings.show.f_ticketcat'), value: `\`${config.tickets.categoryId}\``, inline: true },
     );
     return i.reply({ embeds: [e], flags: ephemeral, allowedMentions: { parse: [] } });
   },

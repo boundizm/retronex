@@ -5,28 +5,28 @@ const {
 } = require('discord.js');
 const config = require('../config');
 const db = require('../database');
+const { t } = require('../texts');
 const { ok, fail, ephemeral } = require('../utils/helpers');
 
 const PREFIX = 'Retronex: ';
 const WORDS_RULE = `${PREFIX}Yasaklı Kelimeler`;
-const BLOCK_MSG = 'Mesajın sunucu kurallarına aykırı olduğu için otomatik olarak engellendi.';
 
-const VERIFICATION = {
-  [GuildVerificationLevel.None]: 'Yok',
-  [GuildVerificationLevel.Low]: 'Düşük (doğrulanmış e-posta)',
-  [GuildVerificationLevel.Medium]: 'Orta (5 dk+ hesap)',
-  [GuildVerificationLevel.High]: 'Yüksek (10 dk+ üye)',
-  [GuildVerificationLevel.VeryHigh]: 'Çok yüksek (doğrulanmış telefon)',
+const VERIFICATION_KEYS = {
+  [GuildVerificationLevel.None]: 'automod.verif.0',
+  [GuildVerificationLevel.Low]: 'automod.verif.1',
+  [GuildVerificationLevel.Medium]: 'automod.verif.2',
+  [GuildVerificationLevel.High]: 'automod.verif.3',
+  [GuildVerificationLevel.VeryHigh]: 'automod.verif.4',
 };
-const CONTENT_FILTER = {
-  [GuildExplicitContentFilter.Disabled]: 'Kapalı',
-  [GuildExplicitContentFilter.MembersWithoutRoles]: 'Rolü olmayan üyeler',
-  [GuildExplicitContentFilter.AllMembers]: 'Tüm üyeler',
+const FILTER_KEYS = {
+  [GuildExplicitContentFilter.Disabled]: 'automod.filter.0',
+  [GuildExplicitContentFilter.MembersWithoutRoles]: 'automod.filter.1',
+  [GuildExplicitContentFilter.AllMembers]: 'automod.filter.2',
 };
 
 // Her kural için temel eylemler: mesajı engelle + (varsa) mod-log'a uyarı gönder
 function baseActions(settings) {
-  const actions = [{ type: AutoModerationActionType.BlockMessage, metadata: { customMessage: BLOCK_MSG } }];
+  const actions = [{ type: AutoModerationActionType.BlockMessage, metadata: { customMessage: t('automod.block_message') } }];
   if (settings.modlog_channel) {
     actions.push({ type: AutoModerationActionType.SendAlertMessage, metadata: { channel: settings.modlog_channel } });
   }
@@ -88,7 +88,7 @@ module.exports = {
     const sub = i.options.getSubcommand();
     const guild = i.guild;
     if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      return i.reply(fail('AutoMod kurallarını yönetmek için bana **Sunucuyu Yönet** yetkisi vermelisin.'));
+      return i.reply(fail(t('automod.noperm')));
     }
     await i.deferReply({ flags: ephemeral });
     const settings = db.getSettings(i.guildId);
@@ -111,34 +111,34 @@ module.exports = {
           });
           created.push(def.name);
         } catch (e) {
-          errors.push(`${def.name}: ${e.message}`);
+          errors.push(t('automod.setup.error', { name: def.name, error: e.message }));
         }
       }
       const lines = [
-        ...created.map((n) => `✅ ${n}`),
-        ...skipped.map((n) => `⏭️ ${n} (zaten var)`),
-        ...errors.map((n) => `❌ ${n}`),
+        ...created.map((name) => t('automod.setup.created', { name })),
+        ...skipped.map((name) => t('automod.setup.skipped', { name })),
+        ...errors,
       ];
-      if (!settings.modlog_channel) lines.push('\nℹ️ `/ayar mod-log` ayarlanmadığı için uyarı bildirimi gönderilmeyecek; ayarladıktan sonra `/otomod kapat` + `/otomod kur` yap.');
-      return i.editReply({ embeds: [new EmbedBuilder().setColor(errors.length ? config.colors.warn : config.colors.success).setTitle('🤖 AutoMod Kurulumu').setDescription(lines.join('\n'))] });
+      if (!settings.modlog_channel) lines.push(`\n${t('automod.setup.nolog')}`);
+      return i.editReply({ embeds: [new EmbedBuilder().setColor(errors.length ? config.colors.warn : config.colors.success).setTitle(t('automod.setup.title')).setDescription(lines.join('\n'))] });
     }
 
     if (sub === 'durum') {
       const rules = await guild.autoModerationRules.fetch();
       const list = rules.map((r) => `${r.enabled ? '🟢' : '🔴'} ${r.name}`);
-      const e = new EmbedBuilder().setColor(config.colors.main).setTitle('🛡️ Moderasyon Durumu').addFields(
-        { name: 'AutoMod kuralları', value: list.length ? list.join('\n').slice(0, 1000) : 'Hiç kural yok. `/otomod kur` ile oluştur.' },
-        { name: 'Doğrulama seviyesi', value: VERIFICATION[guild.verificationLevel] ?? String(guild.verificationLevel), inline: true },
-        { name: 'Müstehcen içerik taraması', value: CONTENT_FILTER[guild.explicitContentFilter] ?? String(guild.explicitContentFilter), inline: true },
-        { name: 'Uyarı eşiği', value: settings.warn_threshold ? `${settings.warn_threshold} uyarı → ${settings.warn_timeout_min} dk susturma` : 'kapalı', inline: true },
-      ).setFooter({ text: 'AutoMod ihlalleri otomatik uyarı olarak kaydedilir.' });
+      const e = new EmbedBuilder().setColor(config.colors.main).setTitle(t('automod.status.title')).addFields(
+        { name: t('automod.status.f_rules'), value: list.length ? list.join('\n').slice(0, 1000) : t('automod.status.norules') },
+        { name: t('automod.status.f_verification'), value: VERIFICATION_KEYS[guild.verificationLevel] ? t(VERIFICATION_KEYS[guild.verificationLevel]) : String(guild.verificationLevel), inline: true },
+        { name: t('automod.status.f_filter'), value: FILTER_KEYS[guild.explicitContentFilter] ? t(FILTER_KEYS[guild.explicitContentFilter]) : String(guild.explicitContentFilter), inline: true },
+        { name: t('automod.status.f_threshold'), value: settings.warn_threshold ? t('automod.status.threshold', { count: settings.warn_threshold, minutes: settings.warn_timeout_min }) : t('automod.status.threshold_off'), inline: true },
+      ).setFooter({ text: t('automod.status.footer') });
       return i.editReply({ embeds: [e] });
     }
 
     if (sub === 'kapat') {
       const rules = (await guild.autoModerationRules.fetch()).filter((r) => r.name.startsWith(PREFIX));
       for (const r of rules.values()) await r.delete(`/otomod kapat (${i.user.tag})`).catch(() => {});
-      return i.editReply(ok(`${rules.size} kural silindi.`));
+      return i.editReply(ok(t('automod.disabled', { count: rules.size })));
     }
 
     // Kelime yönetimi
@@ -147,12 +147,12 @@ module.exports = {
 
     if (sub === 'kelime-liste') {
       const words = rule?.triggerMetadata.keywordFilter ?? [];
-      return i.editReply(words.length ? `**Yasaklı kelimeler (${words.length}):**\n||${words.join(', ').slice(0, 1800)}||` : 'Yasaklı kelime listesi boş.');
+      return i.editReply(words.length ? t('automod.words.list', { count: words.length, words: words.join(', ').slice(0, 1800) }) : t('automod.words.empty'));
     }
 
     if (sub === 'kelime-ekle') {
       const add = parse();
-      if (add.some((w) => w.length > 60)) return i.editReply(fail('Kelimeler en fazla 60 karakter olabilir.'));
+      if (add.some((w) => w.length > 60)) return i.editReply(fail(t('automod.words.toolong')));
       if (!rule) {
         try {
           await guild.autoModerationRules.create({
@@ -164,22 +164,22 @@ module.exports = {
             exemptRoles: settings.staff_role ? [settings.staff_role] : [],
             enabled: true,
           });
-        } catch (e) { return i.editReply(fail(`Kural oluşturulamadı: ${e.message}`)); }
-        return i.editReply(ok(`${add.length} kelime eklendi ve kural oluşturuldu.`));
+        } catch (e) { return i.editReply(fail(t('automod.words.createfail', { error: e.message }))); }
+        return i.editReply(ok(t('automod.words.created', { count: add.length })));
       }
       const merged = [...new Set([...(rule.triggerMetadata.keywordFilter ?? []), ...add])];
-      if (merged.length > 1000) return i.editReply(fail('Discord en fazla 1000 kelimeye izin verir.'));
+      if (merged.length > 1000) return i.editReply(fail(t('automod.words.max')));
       await rule.setKeywordFilter(merged).catch((e) => i.editReply(fail(e.message)));
-      return i.editReply(ok(`Kelime listesi güncellendi (toplam ${merged.length}).`));
+      return i.editReply(ok(t('automod.words.updated', { count: merged.length })));
     }
 
     if (sub === 'kelime-sil') {
-      if (!rule) return i.editReply(fail('Yasaklı kelime kuralı yok.'));
+      if (!rule) return i.editReply(fail(t('automod.words.norule')));
       const remove = new Set(parse());
       const left = (rule.triggerMetadata.keywordFilter ?? []).filter((w) => !remove.has(w));
-      if (!left.length) { await rule.delete(); return i.editReply(ok('Tüm kelimeler silindi, kural kaldırıldı.')); }
+      if (!left.length) { await rule.delete(); return i.editReply(ok(t('automod.words.cleared'))); }
       await rule.setKeywordFilter(left);
-      return i.editReply(ok(`Kelime listesi güncellendi (kalan ${left.length}).`));
+      return i.editReply(ok(t('automod.words.left', { count: left.length })));
     }
   },
 };

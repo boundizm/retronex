@@ -5,6 +5,7 @@ const {
 const config = require('../config');
 const db = require('../database');
 const { ok, fail } = require('../utils/helpers');
+const { t } = require('../texts');
 
 const createCooldown = new Map();
 
@@ -25,7 +26,7 @@ async function createPrivateChannel(member, hub) {
   }
 
   const channel = await guild.channels.create({
-    name: `[💎] ${member.user.username}`.slice(0, config.voice.maxNameLength),
+    name: t('voice.name', { username: member.user.username }).slice(0, config.voice.maxNameLength),
     type: ChannelType.GuildVoice,
     parent: parent?.id,
     bitrate: Math.min(hub.bitrate, guild.maximumBitrate),
@@ -101,10 +102,10 @@ async function cleanup(client) {
 // Kullanıcının bulunduğu kendi özel kanalını ve sahiplik bilgisini döndürür.
 function context(i, { needOwner = true } = {}) {
   const channel = i.member.voice?.channel;
-  if (!channel) return { error: 'Önce bir özel ses kanalına girmelisin.' };
+  if (!channel) return { error: t('voice.err.nochannel') };
   const tracked = db.getVoiceChannel(channel.id);
-  if (!tracked) return { error: 'Bulunduğun kanal bir özel ses kanalı değil.' };
-  if (needOwner && tracked.owner_id !== i.user.id) return { error: `Bu kanalın sahibi <@${tracked.owner_id}>; sadece o yönetebilir.` };
+  if (!tracked) return { error: t('voice.err.notprivate') };
+  if (needOwner && tracked.owner_id !== i.user.id) return { error: t('voice.err.notowner', { owner: tracked.owner_id }) };
   return { channel, tracked };
 }
 
@@ -112,86 +113,86 @@ const actions = {
   async kilitle(i) {
     const { channel, error } = context(i); if (error) return fail(error);
     await channel.permissionOverwrites.edit(i.guild.roles.everyone, { Connect: false });
-    return ok('Kanal kilitlendi; yeni kimse giremez. (`/ses izin` ile birini davet edebilirsin)');
+    return ok(t('voice.locked'));
   },
   async ac(i) {
     const { channel, error } = context(i); if (error) return fail(error);
     await channel.permissionOverwrites.edit(i.guild.roles.everyone, { Connect: null });
-    return ok('Kanal kilidi açıldı.');
+    return ok(t('voice.unlocked'));
   },
   async gizle(i) {
     const { channel, error } = context(i); if (error) return fail(error);
     await channel.permissionOverwrites.edit(i.guild.roles.everyone, { ViewChannel: false });
-    return ok('Kanal gizlendi.');
+    return ok(t('voice.hidden'));
   },
   async goster(i) {
     const { channel, error } = context(i); if (error) return fail(error);
     await channel.permissionOverwrites.edit(i.guild.roles.everyone, { ViewChannel: null });
-    return ok('Kanal artık herkese görünür.');
+    return ok(t('voice.shown'));
   },
   async isim(i, name) {
     const { channel, error } = context(i); if (error) return fail(error);
     const clean = name.trim().slice(0, config.voice.maxNameLength);
-    if (!clean) return fail('Geçersiz isim.');
+    if (!clean) return fail(t('voice.badname'));
     await channel.setName(clean); // Discord isim değişikliği hız limiti: 10 dk'da 2
-    return ok(`Kanal adı **${clean}** oldu.`);
+    return ok(t('voice.renamed', { name: clean }));
   },
   async limit(i, n) {
     const { channel, error } = context(i); if (error) return fail(error);
-    if (!Number.isInteger(n) || n < 0 || n > 99) return fail('Limit 0 (sınırsız) ile 99 arasında olmalı.');
+    if (!Number.isInteger(n) || n < 0 || n > 99) return fail(t('voice.badlimit'));
     await channel.setUserLimit(n);
-    return ok(n ? `Kullanıcı limiti **${n}** yapıldı.` : 'Kullanıcı limiti kaldırıldı.');
+    return ok(n ? t('voice.limit_set', { limit: n }) : t('voice.limit_off'));
   },
   async izin(i, user) {
     const { channel, error } = context(i); if (error) return fail(error);
     await channel.permissionOverwrites.edit(user.id, { ViewChannel: true, Connect: true });
-    return ok(`${user} artık kanala girebilir.`);
+    return ok(t('voice.allowed', { user: `${user}` }));
   },
   async yasakla(i, user) {
     const { channel, error } = context(i); if (error) return fail(error);
-    if (user.id === i.user.id) return fail('Kendini yasaklayamazsın.');
-    if (user.bot) return fail('Botlar için kullanılamaz.');
+    if (user.id === i.user.id) return fail(t('voice.ban_self'));
+    if (user.bot) return fail(t('voice.ban_bot'));
     await channel.permissionOverwrites.edit(user.id, { ViewChannel: false, Connect: false });
     const m = channel.members.get(user.id);
     if (m) await m.voice.disconnect('Özel kanaldan yasaklandı').catch(() => {});
-    return ok(`${user} bu kanaldan yasaklandı.`);
+    return ok(t('voice.banned', { user: `${user}` }));
   },
   async at(i, user) {
     const { channel, error } = context(i); if (error) return fail(error);
-    if (user.id === i.user.id) return fail('Kendini atamazsın.');
+    if (user.id === i.user.id) return fail(t('voice.kick_self'));
     const m = channel.members.get(user.id);
-    if (!m) return fail('Bu kullanıcı kanalında değil.');
+    if (!m) return fail(t('voice.kick_notin'));
     await m.voice.disconnect('Özel kanaldan atıldı');
-    return ok(`${user} kanaldan atıldı.`);
+    return ok(t('voice.kicked', { user: `${user}` }));
   },
   async devret(i, user) {
     const { channel, tracked, error } = context(i); if (error) return fail(error);
-    if (user.bot || user.id === i.user.id) return fail('Geçerli bir kullanıcı seç.');
-    if (!channel.members.has(user.id)) return fail('Kullanıcı kanalda olmalı.');
+    if (user.bot || user.id === i.user.id) return fail(t('voice.transfer_invalid'));
+    if (!channel.members.has(user.id)) return fail(t('voice.transfer_notin'));
     await transferOwnership(channel, user.id, tracked.owner_id);
-    return ok(`Kanal sahipliği ${user} kullanıcısına devredildi.`);
+    return ok(t('voice.transferred', { user: `${user}` }));
   },
   async devral(i) {
     const { channel, tracked, error } = context(i, { needOwner: false }); if (error) return fail(error);
-    if (tracked.owner_id === i.user.id) return fail('Zaten kanalın sahibisin.');
-    if (channel.members.has(tracked.owner_id)) return fail('Sahibi hâlâ kanalda; sahiplik devralınamaz.');
+    if (tracked.owner_id === i.user.id) return fail(t('voice.claim_self'));
+    if (channel.members.has(tracked.owner_id)) return fail(t('voice.claim_owner_present'));
     await transferOwnership(channel, i.user.id, tracked.owner_id);
-    return ok('Kanalın yeni sahibi sensin.');
+    return ok(t('voice.claimed'));
   },
   async sil(i) {
     const { channel, error } = context(i); if (error) return fail(error);
     await deleteTracked(channel);
-    return ok('Kanal silindi.');
+    return ok(t('voice.deleted'));
   },
   async bilgi(i) {
     const { channel, tracked, error } = context(i, { needOwner: false }); if (error) return fail(error);
     const ow = channel.permissionOverwrites.cache.get(i.guild.id);
     const e = new EmbedBuilder().setColor(config.colors.main).setTitle(`🔊 ${channel.name}`).addFields(
-      { name: 'Sahip', value: `<@${tracked.owner_id}>`, inline: true },
-      { name: 'Limit', value: channel.userLimit ? String(channel.userLimit) : 'sınırsız', inline: true },
-      { name: 'Üye', value: String(channel.members.size), inline: true },
-      { name: 'Kilit', value: ow?.deny.has(PermissionFlagsBits.Connect) ? '🔒 kilitli' : '🔓 açık', inline: true },
-      { name: 'Görünürlük', value: ow?.deny.has(PermissionFlagsBits.ViewChannel) ? '🙈 gizli' : '👁️ görünür', inline: true },
+      { name: t('voice.info.f_owner'), value: `<@${tracked.owner_id}>`, inline: true },
+      { name: t('voice.info.f_limit'), value: channel.userLimit ? String(channel.userLimit) : t('voice.info.unlimited'), inline: true },
+      { name: t('voice.info.f_members'), value: String(channel.members.size), inline: true },
+      { name: t('voice.info.f_lock'), value: ow?.deny.has(PermissionFlagsBits.Connect) ? t('voice.info.locked') : t('voice.info.open'), inline: true },
+      { name: t('voice.info.f_visibility'), value: ow?.deny.has(PermissionFlagsBits.ViewChannel) ? t('voice.info.hidden') : t('voice.info.visible'), inline: true },
     );
     return { embeds: [e], flags: 64 };
   },
@@ -202,20 +203,19 @@ async function run(i, action, arg) {
     return await actions[action](i, arg);
   } catch (e) {
     console.error('[ses]', action, e.message);
-    return fail(`İşlem başarısız: ${e.message}`);
+    return fail(t('voice.failed', { error: e.message }));
   }
 }
 
 // ---------------------------------------------------------------- panel
 function panelMessage() {
-  const btn = (id, label, emoji, style = ButtonStyle.Secondary) =>
-    new ButtonBuilder().setCustomId(`ses:${id}`).setLabel(label).setEmoji(emoji).setStyle(style);
+  const btn = (id, key, style = ButtonStyle.Secondary) =>
+    new ButtonBuilder().setCustomId(`ses:${id}`).setLabel(t(`voice.btn.${key}`)).setStyle(style);
   return {
-    embeds: [new EmbedBuilder().setColor(config.colors.main).setTitle('🎙️ Özel Ses Kanalı Paneli')
-      .setDescription('Hub kanalına (➕) girince sana özel bir ses kanalı açılır. Aşağıdaki butonlarla **bulunduğun** kanalı yönetebilirsin.\nKullanıcı bazlı işlemler için `/ses izin`, `/ses yasakla`, `/ses at`, `/ses devret` komutlarını kullan.')],
+    embeds: [new EmbedBuilder().setColor(config.colors.main).setTitle(t('voice.panel.title')).setDescription(t('voice.panel.desc'))],
     components: [
-      new ActionRowBuilder().addComponents(btn('kilitle', 'Kilitle', '🔒'), btn('ac', 'Kilidi Aç', '🔓'), btn('gizle', 'Gizle', '🙈'), btn('goster', 'Göster', '👁️')),
-      new ActionRowBuilder().addComponents(btn('isim', 'İsim', '✏️', ButtonStyle.Primary), btn('limit', 'Limit', '👥', ButtonStyle.Primary), btn('devral', 'Devral', '👑', ButtonStyle.Success), btn('bilgi', 'Bilgi', 'ℹ️'), btn('sil', 'Sil', '🗑️', ButtonStyle.Danger)),
+      new ActionRowBuilder().addComponents(btn('kilitle', 'lock'), btn('ac', 'unlock'), btn('gizle', 'hide'), btn('goster', 'show')),
+      new ActionRowBuilder().addComponents(btn('isim', 'name', ButtonStyle.Primary), btn('limit', 'limit', ButtonStyle.Primary), btn('devral', 'claim', ButtonStyle.Success), btn('bilgi', 'info'), btn('sil', 'delete', ButtonStyle.Danger)),
     ],
   };
 }
@@ -235,8 +235,8 @@ async function handleComponent(i) {
     const { error } = context(i);
     if (error) return i.reply(fail(error));
     return i.showModal(action === 'isim'
-      ? modal('isim', 'Kanal Adı', 'Yeni ad', 'Örn: Habbo Sohbet', config.voice.maxNameLength)
-      : modal('limit', 'Kullanıcı Limiti', 'Limit (0 = sınırsız)', '0-99', 2));
+      ? modal('isim', t('voice.modal.name_title'), t('voice.modal.name_label'), t('voice.modal.name_ph'), config.voice.maxNameLength)
+      : modal('limit', t('voice.modal.limit_title'), t('voice.modal.limit_label'), t('voice.modal.limit_ph'), 2));
   }
   return i.reply(await run(i, action));
 }

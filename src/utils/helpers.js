@@ -1,5 +1,6 @@
 const { EmbedBuilder, MessageFlags } = require('discord.js');
 const config = require('../config');
+const { t } = require('../texts');
 
 const ephemeral = MessageFlags.Ephemeral;
 
@@ -9,8 +10,8 @@ const embed = (color, description, title) => {
   return e;
 };
 
-const ok = (text) => ({ embeds: [embed('success', `✅ ${text}`)], flags: ephemeral });
-const fail = (text) => ({ embeds: [embed('danger', `❌ ${text}`)], flags: ephemeral });
+const ok = (text) => ({ embeds: [embed('success', `${t('generic.ok_prefix')} ${text}`)], flags: ephemeral });
+const fail = (text) => ({ embeds: [embed('danger', `${t('generic.fail_prefix')} ${text}`)], flags: ephemeral });
 
 const ts = (unix, style = 'R') => `<t:${unix}:${style}>`;
 
@@ -28,13 +29,13 @@ function parseDuration(input) {
 
 function formatDuration(sec) {
   const parts = [];
-  for (const [label, size] of [['gün', 86400], ['saat', 3600], ['dk', 60], ['sn', 1]]) {
+  for (const [label, size] of [[t('unit.day'), 86400], [t('unit.hour'), 3600], [t('unit.minute'), 60], [t('unit.second'), 1]]) {
     if (sec >= size) {
       parts.push(`${Math.floor(sec / size)} ${label}`);
       sec %= size;
     }
   }
-  return parts.join(' ') || '0 sn';
+  return parts.join(' ') || `0 ${t('unit.second')}`;
 }
 
 function progressBar(current, total, size = 12) {

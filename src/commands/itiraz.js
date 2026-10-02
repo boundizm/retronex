@@ -3,6 +3,7 @@ const {
   ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
 } = require('discord.js');
 const db = require('../database');
+const { t } = require('../texts');
 const { fail } = require('../utils/helpers');
 
 module.exports = {
@@ -16,15 +17,15 @@ module.exports = {
   async execute(i) {
     const id = i.options.getInteger('ceza-no', true);
     const c = db.getCase(id);
-    if (!c || c.user_id !== i.user.id) return i.reply(fail('Bu numarada sana ait bir ceza bulunamadı.'));
-    if (!c.active) return i.reply(fail('Bu ceza zaten geçersiz ya da kaldırılmış.'));
-    if (db.hasPendingAppeal(id)) return i.reply(fail('Bu ceza için zaten bekleyen bir itirazın var.'));
+    if (!c || c.user_id !== i.user.id) return i.reply(fail(t('appeal.notfound')));
+    if (!c.active) return i.reply(fail(t('appeal.inactive')));
+    if (db.hasPendingAppeal(id)) return i.reply(fail(t('appeal.pending')));
 
     const modal = new ModalBuilder()
       .setCustomId(`itiraz:modal:${id}`)
-      .setTitle(`Ceza #${id} İtirazı`)
+      .setTitle(t('appeal.modal.title', { case: id }))
       .addComponents(new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('metin').setLabel('Neden haksız olduğunu düşünüyorsun?')
+        new TextInputBuilder().setCustomId('metin').setLabel(t('appeal.modal.label'))
           .setStyle(TextInputStyle.Paragraph).setRequired(true).setMinLength(20).setMaxLength(1000),
       ));
     return i.showModal(modal);

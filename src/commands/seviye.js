@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require('discord.js');
 const config = require('../config');
 const db = require('../database');
+const { t } = require('../texts');
 const { progressBar, ephemeral } = require('../utils/helpers');
 
 const seviye = {
@@ -11,9 +12,9 @@ const seviye = {
     .addUserOption((o) => o.setName('kullanici').setDescription('Başka bir kullanıcı')),
   async execute(i) {
     const user = i.options.getUser('kullanici') ?? i.user;
-    if (user.bot) return i.reply({ content: 'Botların seviyesi yok.', flags: ephemeral });
+    if (user.bot) return i.reply({ content: t('level.bot'), flags: ephemeral });
     const row = db.getLevel(i.guildId, user.id);
-    if (!row) return i.reply({ content: `**${user.username}** henüz hiç XP kazanmamış.`, flags: ephemeral });
+    if (!row) return i.reply({ content: t('level.noxp', { user: user.username }), flags: ephemeral });
 
     const { level, current, needed } = db.levelFromXp(row.xp);
     const e = new EmbedBuilder()
@@ -21,12 +22,12 @@ const seviye = {
       .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
       .setThumbnail(user.displayAvatarURL({ size: 256 }))
       .addFields(
-        { name: 'Seviye', value: `**${level}**`, inline: true },
-        { name: 'Sıralama', value: `**#${db.getRank(i.guildId, row.xp)}**`, inline: true },
-        { name: 'Mesaj', value: `${row.messages}`, inline: true },
-        { name: `Sonraki seviye (${current}/${needed} XP)`, value: `\`${progressBar(current, needed)}\` %${Math.floor((current / needed) * 100)}` },
+        { name: t('level.field.level'), value: `**${level}**`, inline: true },
+        { name: t('level.field.rank'), value: `**#${db.getRank(i.guildId, row.xp)}**`, inline: true },
+        { name: t('level.field.messages'), value: `${row.messages}`, inline: true },
+        { name: t('level.field.next', { current, needed }), value: `\`${progressBar(current, needed)}\` %${Math.floor((current / needed) * 100)}` },
       )
-      .setFooter({ text: `Toplam XP: ${row.xp}` });
+      .setFooter({ text: t('level.footer', { xp: row.xp }) });
     return i.reply({ embeds: [e] });
   },
 };
@@ -43,16 +44,16 @@ const siralama = {
     const pages = Math.max(1, Math.ceil(total / PAGE));
     const page = Math.min(i.options.getInteger('sayfa') ?? 1, pages);
     const rows = db.getLeaderboard(i.guildId, PAGE, (page - 1) * PAGE);
-    if (!rows.length) return i.reply({ content: 'Henüz sıralamada kimse yok.', flags: ephemeral });
+    if (!rows.length) return i.reply({ content: t('level.board.empty'), flags: ephemeral });
     const medals = ['🥇', '🥈', '🥉'];
     const lines = rows.map((r, idx) => {
       const pos = (page - 1) * PAGE + idx;
-      return `${medals[pos] ?? `**${pos + 1}.**`} <@${r.user_id}> — Seviye **${r.level}** • ${r.xp} XP`;
+      return t('level.board.line', { pos: medals[pos] ?? `**${pos + 1}.**`, id: r.user_id, level: r.level, xp: r.xp });
     });
     const e = new EmbedBuilder().setColor(config.colors.main)
-      .setTitle(`🏆 ${i.guild.name} Sıralaması`)
+      .setTitle(t('level.board.title', { guild: i.guild.name }))
       .setDescription(lines.join('\n'))
-      .setFooter({ text: `Sayfa ${page}/${pages}` });
+      .setFooter({ text: t('level.board.footer', { page, pages }) });
     return i.reply({ embeds: [e], allowedMentions: { parse: [] } });
   },
 };

@@ -1,5 +1,6 @@
 const config = require('../config');
 const db = require('../database');
+const { t } = require('../texts');
 
 const cooldowns = new Map(); // `${guild}:${user}` -> timestamp
 
@@ -39,7 +40,7 @@ async function handleMessage(message) {
     ? await message.guild.channels.fetch(settings.level_channel).catch(() => null)
     : message.channel;
   await (channel ?? message.channel)
-    .send({ content: `🎉 Tebrikler ${message.author}, **${res.level}. seviye** oldun!`, allowedMentions: { users: [message.author.id] } })
+    .send({ content: t('level.up', { user: `${message.author}`, level: res.level }), allowedMentions: { users: [message.author.id] } })
     .catch(() => {});
 }
 

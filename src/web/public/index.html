@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Retronex Panel</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <section id="login" hidden>
+    <form id="login-form" class="login-card">
+      <h1>🎫 Retronex Panel</h1>
+      <p class="muted">Bot metinlerini düzenlemek için giriş yap.</p>
+      <label for="password">Şifre</label>
+      <input id="password" type="password" autocomplete="current-password" required autofocus>
+      <button class="btn primary" type="submit">Giriş yap</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <header>
+      <h1>Retronex Panel</h1>
+      <input id="search" type="search" placeholder="Metinlerde ara (anahtar, etiket, içerik)…" aria-label="Ara">
+      <button id="refresh-panel" class="btn" type="button" title="Destek merkezi mesajını Discord'da şimdi güncelle">🎫 Bilet panelini güncelle</button>
+      <button id="logout" class="btn" type="button">Çıkış</button>
+    </header>
+    <div class="layout">
+      <nav id="groups" aria-label="Gruplar"></nav>
+      <main id="content"></main>
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

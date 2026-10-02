@@ -38,6 +38,22 @@ Türk Habbo Retro topluluğu için Discord botu (discord.js v14, Node 22.13+, SQ
    /seviye-ayar rol-ekle seviye:5 rol:@Aktif
    ```
 
+## Web paneli (metin düzenleme)
+
+Botun gönderdiği **tüm metinler** (yanıtlar, embed başlık/alan/alt yazıları, buton ve menü etiketleri, DM'ler, log mesajları, modal pencereler, bilet paneli, renkler — ~290 adet) web panelinden düzenlenir. Değişiklik anında geçerli olur, yeniden başlatma gerekmez.
+
+```env
+PANEL_PASSWORD=en-az-10-karakterli-guclu-sifre   # tanımlı değilse panel kapalı kalır
+PANEL_PORT=3000                                  # varsayılan 3000
+PANEL_HOST=127.0.0.1                             # varsayılan sadece yerel; dışarı açmak için 0.0.0.0
+```
+
+- Açılış: `http://127.0.0.1:3000`. Sunucuda çalışıyorsa SSH tüneli (`ssh -L 3000:127.0.0.1:3000 sunucu`) ya da HTTPS veren bir ters vekil (nginx/Caddy) arkasında kullan; bu durumda `PANEL_COOKIE_SECURE=true` (ve vekil IP'si için `PANEL_TRUST_PROXY=true`) ekle. Şifreyi düz HTTP üzerinden internete açma.
+- `{kullanici}`, `{case}` gibi **değişkenler** her metnin altında listelenir (tıklayınca eklenir); listede olmayan değişken kaydedilmez. Discord karakter sınırları (başlık 256, açıklama 2000, buton 80…) denetlenir. Altta Discord benzeri **önizleme** görünür.
+- **Sıfırla** düğmesi metni varsayılana döndürür. Varsayılanlar `src/catalog.js` içindedir; yeni bir metin eklemek için oraya satır ekleyip kodda `t('anahtar')` kullan (`npm run check` eksik/kullanılmayan anahtarları yakalar).
+- Bilet paneli metinleri (başlık, açıklama, menü, kategori adları, renk) kaydedilince Discord'daki mesaj **otomatik güncellenir**; elle için "🎫 Bilet panelini güncelle".
+- Panelden değişmeyenler: slash komut adları/açıklamaları (Discord'a `npm run deploy` ile yüklenir), AutoMod kural adları, sunucu denetim kaydı (audit log) sebepleri. Seviye/ceza eşikleri gibi sayısal ayarlar `/ayar` ile yapılır.
+
 ## Notlar
 
 - `GUILD_ID` doluysa komutlar anında o sunucuya yüklenir (geliştirme için); boşsa global yüklenir ve `/itiraz` bot DM'inde de çalışır.

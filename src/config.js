@@ -5,12 +5,14 @@ module.exports = {
   clientId: process.env.CLIENT_ID,
   guildId: process.env.GUILD_ID || null,
 
+  // Renkler web panelinden değiştirilebilir (texts.js); her okumada güncel değer gelir.
   colors: {
-    main: 0x5865f2,
-    success: 0x57f287,
-    warn: 0xfee75c,
-    danger: 0xed4245,
-    info: 0x3498db,
+    get main() { return require('./texts').color('main'); },
+    get success() { return require('./texts').color('success'); },
+    get warn() { return require('./texts').color('warn'); },
+    get danger() { return require('./texts').color('danger'); },
+    get info() { return require('./texts').color('info'); },
+    get ticket() { return require('./texts').color('ticket'); },
   },
 
   // Seviye sistemi
@@ -28,6 +30,5 @@ module.exports = {
   tickets: {
     panelChannelId: process.env.TICKET_PANEL_CHANNEL_ID || '1555279909553709066',
     categoryId: process.env.TICKET_CATEGORY_ID || '1555279862326104124',
-    color: 0x1db924,
   },
 };

@@ -1,32 +1,40 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('../config');
 const db = require('../database');
-const { ts, formatDuration, truncate } = require('./helpers');
+const { formatDuration, truncate } = require('./helpers');
+const { t } = require('../texts');
 
 const TYPES = {
-  ban: { label: 'Yasaklama', emoji: '🔨', color: config.colors.danger },
-  unban: { label: 'Yasak Kaldırma', emoji: '🔓', color: config.colors.success },
-  kick: { label: 'Atma', emoji: '👢', color: config.colors.danger },
-  sustur: { label: 'Susturma', emoji: '🔇', color: config.colors.warn },
-  susturma_kaldir: { label: 'Susturma Kaldırma', emoji: '🔊', color: config.colors.success },
-  uyari: { label: 'Uyarı', emoji: '⚠️', color: config.colors.warn },
-  otomod: { label: 'Otomatik Moderasyon', emoji: '🤖', color: config.colors.info },
+  ban: { emoji: '🔨', color: 'danger' },
+  unban: { emoji: '🔓', color: 'success' },
+  kick: { emoji: '👢', color: 'danger' },
+  sustur: { emoji: '🔇', color: 'warn' },
+  susturma_kaldir: { emoji: '🔊', color: 'success' },
+  uyari: { emoji: '⚠️', color: 'warn' },
+  otomod: { emoji: '🤖', color: 'info' },
 };
 
-const typeInfo = (type) => TYPES[type] || { label: type, emoji: '📌', color: config.colors.main };
+function typeInfo(type) {
+  const known = TYPES[type];
+  return {
+    label: known ? t(`case.type.${type}`) : type,
+    emoji: known?.emoji ?? '📌',
+    color: config.colors[known?.color ?? 'main'],
+  };
+}
 
 function caseEmbed(c) {
-  const t = typeInfo(c.type);
+  const ti = typeInfo(c.type);
   const e = new EmbedBuilder()
-    .setColor(t.color)
-    .setTitle(`${t.emoji} ${t.label} | Ceza #${c.id}`)
+    .setColor(ti.color)
+    .setTitle(t('case.title', { emoji: ti.emoji, type: ti.label, case: c.id }))
     .addFields(
-      { name: 'Kullanıcı', value: `<@${c.user_id}> (\`${c.user_id}\`)`, inline: true },
-      { name: 'Yetkili', value: c.mod_id === 'otomod' ? '🤖 Otomatik' : `<@${c.mod_id}>`, inline: true },
-      { name: 'Sebep', value: truncate(c.reason, 1000) || '—' },
+      { name: t('case.field.user'), value: `<@${c.user_id}> (\`${c.user_id}\`)`, inline: true },
+      { name: t('case.field.mod'), value: c.mod_id === 'otomod' ? t('case.auto') : `<@${c.mod_id}>`, inline: true },
+      { name: t('case.field.reason'), value: truncate(c.reason, 1000) || t('mod.noreason') },
     )
     .setTimestamp(c.created_at * 1000);
-  if (c.duration_sec) e.addFields({ name: 'Süre', value: formatDuration(c.duration_sec), inline: true });
+  if (c.duration_sec) e.addFields({ name: t('case.field.duration'), value: formatDuration(c.duration_sec), inline: true });
   return e;
 }
 
@@ -52,7 +60,7 @@ async function checkWarnEscalation(guild, userId) {
   const member = await guild.members.fetch(userId).catch(() => null);
   if (!member?.moderatable) return null;
   const sec = s.warn_timeout_min * 60;
-  const reason = `${s.warn_threshold} aktif uyarıya ulaşıldı (otomatik)`;
+  const reason = t('case.escalation_reason', { count: s.warn_threshold });
   await member.timeout(Math.min(sec, 28 * 86400) * 1000, reason).catch(() => null);
   const c = db.addCase({ guildId: guild.id, userId, modId: guild.client.user.id, type: 'sustur', reason, durationSec: sec });
   await sendCaseLog(guild, c);

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, InteractionContextType, PermissionFlagsBits } = require('discord.js');
 const voice = require('../features/voice');
 const { fail } = require('../utils/helpers');
+const { t } = require('../texts');
 
 const userOpt = (o) => o.setName('kullanici').setDescription('Kullanıcı').setRequired(true);
 
@@ -30,7 +31,7 @@ module.exports = {
     const sub = i.options.getSubcommand();
 
     if (sub === 'panel') {
-      if (!i.memberPermissions.has(PermissionFlagsBits.ManageChannels)) return i.reply(fail('Bunun için **Kanalları Yönet** yetkisi gerekir.'));
+      if (!i.memberPermissions.has(PermissionFlagsBits.ManageChannels)) return i.reply(fail(t('voice.panel_perm')));
       return i.reply(voice.panelMessage());
     }
 

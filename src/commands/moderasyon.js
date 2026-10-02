@@ -4,6 +4,7 @@ const {
 const config = require('../config');
 const db = require('../database');
 const { ok, fail, ts, parseDuration, formatDuration, truncate, ephemeral } = require('../utils/helpers');
+const { t } = require('../texts');
 const { checkTarget, dmPunished } = require('../utils/moderation');
 const { sendCaseLog, typeInfo, checkWarnEscalation, sendLog } = require('../utils/modlog');
 
@@ -27,10 +28,10 @@ const ban = {
   async execute(i) {
     const user = i.options.getUser('kullanici', true);
     const member = i.options.getMember('kullanici');
-    const reason = i.options.getString('sebep') || 'Sebep belirtilmedi';
+    const reason = i.options.getString('sebep') || t('mod.noreason');
     const err = checkTarget(i, member, (m) => m.bannable);
     if (err) return i.reply(fail(err));
-    if (!member && user.id === i.user.id) return i.reply(fail('Kendini yasaklayamazsın.'));
+    if (!member && user.id === i.user.id) return i.reply(fail(t('mod.ban.self')));
 
     await i.deferReply({ flags: ephemeral });
     const c = db.addCase({ guildId: i.guildId, userId: user.id, modId: i.user.id, type: 'ban', reason });
@@ -39,10 +40,10 @@ const ban = {
       await i.guild.members.ban(user, { reason: `${i.user.tag}: ${reason}`, deleteMessageSeconds: (i.options.getInteger('mesaj-sil') ?? 0) * 86400 });
     } catch (e) {
       db.deleteCase(c.id);
-      return i.editReply(fail(`Yasaklanamadı: ${e.message}`));
+      return i.editReply(fail(t('mod.ban.failed', { error: e.message })));
     }
     await sendCaseLog(i.guild, c);
-    return i.editReply(ok(`**${user.tag}** yasaklandı. (Ceza #${c.id})`));
+    return i.editReply(ok(t('mod.ban.success', { user: user.tag, case: c.id })));
   },
 };
 
@@ -52,16 +53,16 @@ const unban = {
     .addStringOption(reasonOpt),
   async execute(i) {
     const id = i.options.getString('kullanici-id', true).trim();
-    const reason = i.options.getString('sebep') || 'Sebep belirtilmedi';
+    const reason = i.options.getString('sebep') || t('mod.noreason');
     try {
       await i.guild.members.unban(id, `${i.user.tag}: ${reason}`);
     } catch {
-      return i.reply(fail('Bu ID ile yasaklı bir kullanıcı bulunamadı.'));
+      return i.reply(fail(t('mod.unban.notfound')));
     }
     for (const c of db.getUserCases(i.guildId, id, 'ban')) db.deactivateCase(c.id);
     const c = db.addCase({ guildId: i.guildId, userId: id, modId: i.user.id, type: 'unban', reason });
     await sendCaseLog(i.guild, c);
-    return i.reply(ok(`\`${id}\` kullanıcısının yasağı kaldırıldı.`));
+    return i.reply(ok(t('mod.unban.success', { id })));
   },
 };
 
@@ -73,10 +74,10 @@ const kick = {
   async execute(i) {
     const user = i.options.getUser('kullanici', true);
     const member = i.options.getMember('kullanici');
-    if (!member) return i.reply(fail('Kullanıcı sunucuda değil.'));
+    if (!member) return i.reply(fail(t('generic.notinguild')));
     const err = checkTarget(i, member, (m) => m.kickable);
     if (err) return i.reply(fail(err));
-    const reason = i.options.getString('sebep') || 'Sebep belirtilmedi';
+    const reason = i.options.getString('sebep') || t('mod.noreason');
 
     await i.deferReply({ flags: ephemeral });
     const c = db.addCase({ guildId: i.guildId, userId: user.id, modId: i.user.id, type: 'kick', reason });
@@ -85,10 +86,10 @@ const kick = {
       await member.kick(`${i.user.tag}: ${reason}`);
     } catch (e) {
       db.deleteCase(c.id);
-      return i.editReply(fail(`Atılamadı: ${e.message}`));
+      return i.editReply(fail(t('mod.kick.failed', { error: e.message })));
     }
     await sendCaseLog(i.guild, c);
-    return i.editReply(ok(`**${user.tag}** sunucudan atıldı. (Ceza #${c.id})`));
+    return i.editReply(ok(t('mod.kick.success', { user: user.tag, case: c.id })));
   },
 };
 
@@ -101,23 +102,23 @@ const sustur = {
   async execute(i) {
     const user = i.options.getUser('kullanici', true);
     const member = i.options.getMember('kullanici');
-    if (!member) return i.reply(fail('Kullanıcı sunucuda değil.'));
+    if (!member) return i.reply(fail(t('generic.notinguild')));
     const err = checkTarget(i, member, (m) => m.moderatable);
     if (err) return i.reply(fail(err));
     const sec = parseDuration(i.options.getString('sure', true));
-    if (!sec || sec > MAX_TIMEOUT_SEC) return i.reply(fail('Geçersiz süre. Örnek: `30m`, `2h`, `1d` (en fazla 28 gün).'));
-    const reason = i.options.getString('sebep') || 'Sebep belirtilmedi';
+    if (!sec || sec > MAX_TIMEOUT_SEC) return i.reply(fail(t('mod.timeout.badduration')));
+    const reason = i.options.getString('sebep') || t('mod.noreason');
 
     await i.deferReply({ flags: ephemeral });
     try {
       await member.timeout(sec * 1000, `${i.user.tag}: ${reason}`);
     } catch (e) {
-      return i.editReply(fail(`Susturulamadı: ${e.message}`));
+      return i.editReply(fail(t('mod.timeout.failed', { error: e.message })));
     }
     const c = db.addCase({ guildId: i.guildId, userId: user.id, modId: i.user.id, type: 'sustur', reason, durationSec: sec });
     await dmPunished(user, i.guild, c);
     await sendCaseLog(i.guild, c);
-    return i.editReply(ok(`**${user.tag}** ${formatDuration(sec)} susturuldu. (Ceza #${c.id})`));
+    return i.editReply(ok(t('mod.timeout.success', { user: user.tag, duration: formatDuration(sec), case: c.id })));
   },
 };
 
@@ -128,17 +129,17 @@ const unmute = {
   async execute(i) {
     const user = i.options.getUser('kullanici', true);
     const member = i.options.getMember('kullanici');
-    if (!member?.isCommunicationDisabled()) return i.reply(fail('Bu kullanıcı susturulmuş değil.'));
-    const reason = i.options.getString('sebep') || 'Sebep belirtilmedi';
+    if (!member?.isCommunicationDisabled()) return i.reply(fail(t('mod.untimeout.notmuted')));
+    const reason = i.options.getString('sebep') || t('mod.noreason');
     try {
       await member.timeout(null, `${i.user.tag}: ${reason}`);
     } catch (e) {
-      return i.reply(fail(`Kaldırılamadı: ${e.message}`));
+      return i.reply(fail(t('mod.untimeout.failed', { error: e.message })));
     }
     for (const c of db.getUserCases(i.guildId, user.id, 'sustur')) db.deactivateCase(c.id);
     const c = db.addCase({ guildId: i.guildId, userId: user.id, modId: i.user.id, type: 'susturma_kaldir', reason });
     await sendCaseLog(i.guild, c);
-    return i.reply(ok(`**${user.tag}** kullanıcısının susturması kaldırıldı.`));
+    return i.reply(ok(t('mod.untimeout.success', { user: user.tag })));
   },
 };
 
@@ -149,7 +150,7 @@ const uyar = {
     .addStringOption((o) => reasonOpt(o).setRequired(true)),
   async execute(i) {
     const user = i.options.getUser('kullanici', true);
-    if (user.bot) return i.reply(fail('Botlara uyarı verilemez.'));
+    if (user.bot) return i.reply(fail(t('mod.warn.bot')));
     const member = i.options.getMember('kullanici');
     const err = checkTarget(i, member, () => true);
     if (err) return i.reply(fail(err));
@@ -161,7 +162,7 @@ const uyar = {
     await sendCaseLog(i.guild, c);
     const esc = await checkWarnEscalation(i.guild, user.id);
     const n = db.countActiveWarns(i.guildId, user.id);
-    return i.editReply(ok(`**${user.tag}** uyarıldı. (Ceza #${c.id}, aktif uyarı: ${n})${esc ? `\n⏱️ Eşik aşıldığı için otomatik susturuldu (Ceza #${esc.id}).` : ''}`));
+    return i.editReply(ok(t('mod.warn.success', { user: user.tag, case: c.id, count: n }) + (esc ? `\n${t('mod.warn.escalated', { case: esc.id })}` : '')));
   },
 };
 
@@ -171,13 +172,13 @@ const uyarilar = {
   async execute(i) {
     const user = i.options.getUser('kullanici', true);
     const list = db.getUserCases(i.guildId, user.id, 'uyari');
-    if (!list.length) return i.reply({ content: 'Bu kullanıcının uyarısı yok.', flags: ephemeral });
+    if (!list.length) return i.reply({ content: t('mod.warns.empty'), flags: ephemeral });
     const lines = list.slice(0, 15).map((c) =>
-      `${c.active ? '🟡' : '⚪'} **#${c.id}** ${ts(c.created_at, 'd')} — ${truncate(c.reason, 90)} (<@${c.mod_id}>)`);
+      t('mod.warns.line', { icon: c.active ? '🟡' : '⚪', case: c.id, date: ts(c.created_at, 'd'), reason: truncate(c.reason ?? t('mod.noreason'), 90), mod: `<@${c.mod_id}>` }));
     const e = new EmbedBuilder().setColor(config.colors.warn)
-      .setTitle(`${user.tag} — Uyarılar`)
+      .setTitle(t('mod.warns.title', { user: user.tag }))
       .setDescription(lines.join('\n'))
-      .setFooter({ text: `Aktif: ${db.countActiveWarns(i.guildId, user.id)} / Toplam: ${list.length}  •  🟡 aktif  ⚪ geçersiz` });
+      .setFooter({ text: t('mod.warns.footer', { active: db.countActiveWarns(i.guildId, user.id), total: list.length }) });
     return i.reply({ embeds: [e], flags: ephemeral });
   },
 };
@@ -187,10 +188,10 @@ const uyariSil = {
     .addIntegerOption((o) => o.setName('ceza-no').setDescription('Uyarı numarası').setRequired(true).setMinValue(1)),
   async execute(i) {
     const c = db.getCase(i.options.getInteger('ceza-no', true));
-    if (!c || c.guild_id !== i.guildId || c.type !== 'uyari') return i.reply(fail('Bu numarada bir uyarı bulunamadı.'));
+    if (!c || c.guild_id !== i.guildId || c.type !== 'uyari') return i.reply(fail(t('mod.delwarn.notfound')));
     db.deactivateCase(c.id);
-    await sendLog(i.guild, { content: `🧹 **Uyarı #${c.id}** (<@${c.user_id}>) <@${i.user.id}> tarafından geçersiz kılındı.`, allowedMentions: { parse: [] } });
-    return i.reply(ok(`Uyarı #${c.id} geçersiz kılındı.`));
+    await sendLog(i.guild, { content: t('mod.delwarn.log', { case: c.id, target: c.user_id, mod: i.user.id }), allowedMentions: { parse: [] } });
+    return i.reply(ok(t('mod.delwarn.success', { case: c.id })));
   },
 };
 
@@ -200,15 +201,15 @@ const cezalar = {
   async execute(i) {
     const user = i.options.getUser('kullanici', true);
     const list = db.getUserCases(i.guildId, user.id);
-    if (!list.length) return i.reply({ content: 'Bu kullanıcının sicili temiz. ✨', flags: ephemeral });
+    if (!list.length) return i.reply({ content: t('mod.cases.clean'), flags: ephemeral });
     const lines = list.slice(0, 15).map((c) => {
-      const t = typeInfo(c.type);
-      return `${t.emoji} **#${c.id}** ${t.label} ${ts(c.created_at, 'd')} — ${truncate(c.reason, 70)}`;
+      const ti = typeInfo(c.type);
+      return t('mod.cases.line', { emoji: ti.emoji, case: c.id, type: ti.label, date: ts(c.created_at, 'd'), reason: truncate(c.reason ?? t('mod.noreason'), 70) });
     });
     const e = new EmbedBuilder().setColor(config.colors.main)
-      .setTitle(`${user.tag} — Ceza Geçmişi`)
+      .setTitle(t('mod.cases.title', { user: user.tag }))
       .setDescription(lines.join('\n'))
-      .setFooter({ text: `Toplam ${list.length} kayıt` });
+      .setFooter({ text: t('mod.cases.footer', { total: list.length }) });
     return i.reply({ embeds: [e], flags: ephemeral });
   },
 };
@@ -219,7 +220,7 @@ const temizle = {
     .addIntegerOption((o) => o.setName('miktar').setDescription('1-100').setRequired(true).setMinValue(1).setMaxValue(100))
     .addUserOption((o) => o.setName('kullanici').setDescription('Sadece bu kullanıcının mesajları')),
   async execute(i) {
-    if (!i.channel?.isTextBased() || i.channel.isDMBased()) return i.reply(fail('Bu kanalda kullanılamaz.'));
+    if (!i.channel?.isTextBased() || i.channel.isDMBased()) return i.reply(fail(t('mod.purge.unavailable')));
     await i.deferReply({ flags: ephemeral });
     const amount = i.options.getInteger('miktar', true);
     const user = i.options.getUser('kullanici');
@@ -227,10 +228,10 @@ const temizle = {
     if (user) msgs = msgs.filter((m) => m.author.id === user.id).first(amount);
     try {
       const deleted = await i.channel.bulkDelete(msgs, true);
-      await sendLog(i.guild, { content: `🧹 <@${i.user.id}> ${i.channel} kanalında **${deleted.size}** mesaj sildi${user ? ` (${user.tag})` : ''}.`, allowedMentions: { parse: [] } });
-      return i.editReply(ok(`${deleted.size} mesaj silindi. (14 günden eski mesajlar silinemez)`));
+      await sendLog(i.guild, { content: t('mod.purge.log', { mod: i.user.id, channel: `${i.channel}`, count: deleted.size, target: user ? ` (${user.tag})` : '' }), allowedMentions: { parse: [] } });
+      return i.editReply(ok(t('mod.purge.success', { count: deleted.size })));
     } catch (e) {
-      return i.editReply(fail(`Silinemedi: ${e.message}`));
+      return i.editReply(fail(t('mod.purge.failed', { error: e.message })));
     }
   },
 };
@@ -243,10 +244,10 @@ const lockCmd = (name, desc, lock) => ({
     try {
       await ch.permissionOverwrites.edit(i.guild.roles.everyone, { SendMessages: lock ? false : null }, { reason: `${i.user.tag}: ${name}` });
     } catch (e) {
-      return i.reply(fail(`Yapılamadı: ${e.message}`));
+      return i.reply(fail(t('generic.failed', { error: e.message })));
     }
-    await sendLog(i.guild, { content: `${lock ? '🔒' : '🔓'} <@${i.user.id}> ${ch} kanalını ${lock ? 'kilitledi' : 'açtı'}.`, allowedMentions: { parse: [] } });
-    return i.reply(ok(`${ch} ${lock ? 'kilitlendi' : 'kilidi açıldı'}.`));
+    await sendLog(i.guild, { content: t(lock ? 'mod.lock.log' : 'mod.unlock.log', { mod: i.user.id, channel: `${ch}` }), allowedMentions: { parse: [] } });
+    return i.reply(ok(t(lock ? 'mod.lock.success' : 'mod.unlock.success', { channel: `${ch}` })));
   },
 });
 
@@ -260,9 +261,9 @@ const yavasmod = {
     try {
       await ch.setRateLimitPerUser(sec, `${i.user.tag}: yavaş mod`);
     } catch (e) {
-      return i.reply(fail(`Yapılamadı: ${e.message}`));
+      return i.reply(fail(t('generic.failed', { error: e.message })));
     }
-    return i.reply(ok(sec ? `${ch} yavaş modu **${sec} sn** yapıldı.` : `${ch} yavaş modu kapatıldı.`));
+    return i.reply(ok(sec ? t('mod.slow.on', { channel: `${ch}`, seconds: sec }) : t('mod.slow.off', { channel: `${ch}` })));
   },
 };
 

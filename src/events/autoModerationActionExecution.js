@@ -1,5 +1,6 @@
 const { Events, AutoModerationActionType } = require('discord.js');
 const db = require('../database');
+const { t } = require('../texts');
 const { sendCaseLog, checkWarnEscalation } = require('../utils/modlog');
 const { dmPunished } = require('../utils/moderation');
 
@@ -21,9 +22,9 @@ module.exports = {
 
     const c = db.addCase({
       guildId: guild.id, userId, modId: 'otomod', type: 'uyari',
-      reason: `AutoMod: ${execution.ruleName}${execution.matchedKeyword ? ` (“${execution.matchedKeyword}”)` : ''}`,
+      reason: t('automod.reason', { rule: execution.ruleName, keyword: execution.matchedKeyword ? ` (“${execution.matchedKeyword}”)` : '' }),
     });
-    await dmPunished(user, guild, c, 'Mesajın otomatik moderasyon tarafından engellendi.');
+    await dmPunished(user, guild, c, t('automod.dm_extra'));
     await sendCaseLog(guild, c);
     await checkWarnEscalation(guild, userId);
   },
